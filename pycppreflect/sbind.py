@@ -443,6 +443,7 @@ class Parser(object):
 		"""	Parse Clang cursor 
 		"""
 		cursorPath = os.path.realpath(os.path.dirname(str(cursor.location.file)))
+		
 		if self._valid_path(cursorPath):
 			#Note: Initially, self.cursors are ALWAYS clang.cindex.CursorKind.LINKAGE_SPEC
 			#Todo: Write additional cursor handles or come up with dummies
