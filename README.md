@@ -45,10 +45,12 @@ Todo
 FAQ
 ---
 q.  why are properties stored in self.components_ instead of just normal variables?
+
 a.  Initially it was easier for me to dump property data  when it was stored in a dictionary instead
 of having to hardcode each property name.  I fully intend to scrap this framework.
 
 q.  why not just do this work manually?
+
 a.  I have a few libs w/ over 100 functions I need to wrap.  That's not something I'd care to do manually.
 
 contact: jerdak@seethroughskin.com
