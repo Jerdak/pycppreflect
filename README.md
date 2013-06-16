@@ -37,7 +37,7 @@ Todo
 -----
 - [ ] Port all additional pycppreflect code from local repo
 - [ ] Add additional cursor handlers
-- [ ] Add example filters like UnityDllImport.py
+- [x] Add example filters like UnityDllImport.py
 - [ ] Add code to limit the reach of the flattened output
 - [ ] Clean .py code a bit to remove redundant data
 - [ ] Replace TypeKind values with canonical CPP types
