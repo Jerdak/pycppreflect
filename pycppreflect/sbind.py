@@ -54,7 +54,7 @@ class ParamDecl(object):
 		self.components_ = {}
 		
 	@staticmethod
-	def create(cursor):
+	def flatten(cursor):
 		""" Factory method to create paramter declaration
 		"""
 		if cursor.kind != clang.cindex.CursorKind.PARM_DECL:
@@ -151,9 +151,10 @@ class ParamDecl(object):
 class FunctionDecl(object):
 	def __init__(self):
 		self.components_ = {}
+		self.is_result_pointer = False
 		
 	@staticmethod
-	def create(cursor):
+	def flatten(cursor):
 		""" Factory method to create function declaration
 		"""
 		if cursor.kind != clang.cindex.CursorKind.FUNCTION_DECL:
@@ -161,14 +162,14 @@ class FunctionDecl(object):
 			
 		
 		ret = FunctionDecl()
-		ret.location = cursor.location
-		ret.spelling = cursor.spelling
-		ret.displayname = cursor.displayname
-		ret.params = cursor.get_argument_list()
-		ret.result_type = cursor.result_type.get_canonical()
-		ret.usr = cursor.get_usr()
-		ret.kind = cursor.kind
-		
+		ret.location 			= str(cursor.location)
+		ret.spelling 			= str(cursor.spelling)
+		ret.displayname 		= str(cursor.displayname)
+		ret.usr 				= str(cursor.get_usr())
+		ret.kind 				= str(cursor.kind)
+
+		ret.params 				= cursor.get_argument_list()
+		ret.result_type 		= cursor.result_type.get_canonical()		
 		return ret
 		
 	#-----------------------------------
@@ -264,7 +265,7 @@ class FunctionDecl(object):
 		if 'params' not in self.components_:
 			self.components_['params'] = []
 		for arg in value:
-			tmp = ParamDecl.create(arg)
+			tmp = ParamDecl.flatten(arg)
 			if tmp != None:
 				self.components_['params'].append(tmp)	
 		
@@ -307,11 +308,14 @@ class FunctionDecl(object):
 			self.components_['result_type'] = value.kind.name.lower()			
 	
 	
+	def __repr__(self):
+		return str(self)
+		
 	def __str__(self):
 		if self.is_result_pointer:
-			return self.components_['result_type'] + "* " + self.components_['displayname']
+			return self.result_type + "* " + self.displayname
 		else:
-			return self.components_['result_type'] + " " + self.components_['displayname']
+			return self.result_type + " " + self.displayname
 	
 	def dump(self):
 		print "\n<Function: "+ str(self) + ">"
@@ -322,16 +326,13 @@ class ExternDecl(object):
 		pass
 		
 	@staticmethod	
-	def create_functions(cursor):
+	def flatten(cursor):
 		if cursor.kind != clang.cindex.CursorKind.LINKAGE_SPEC:
-			#invalid type
 			return None
 		
-		#print "linkage spec"
 		ret = []
 		for child in cursor.get_children():
-			#pprint(get_info(child))
-			tmp = FunctionDecl.create(child)
+			tmp = FunctionDecl.flatten(child)
 			if tmp != None:
 				ret.append(tmp)
 
@@ -344,7 +345,7 @@ class Parser(object):
 		self.is_recursive = True
 		self.clang_args = ['-x', 'c++','-cc1']
 		self.cursor_handles = "" #cursor_handlers setter temporarily disabled
-	
+		self.functions = []
 	
 	#-------------------------------------
 	@property
@@ -358,6 +359,7 @@ class Parser(object):
 		self.components_['cursor_handles'] = {
 			clang.cindex.CursorKind.LINKAGE_SPEC:ExternDecl
 			}
+		
 		
 	#-------------------------------------
 	@property
@@ -427,6 +429,10 @@ class Parser(object):
 		
 	
 	def _valid_path(self,cursorPath):
+		""" Return whether cursor path is valid or not
+		
+		@validity: Validity is determined by the pathing flags
+		"""
 		if(cursorPath == self.rootPath_):
 			return True
 			
@@ -434,11 +440,9 @@ class Parser(object):
 			if cursorPath.find(self.rootPath_)==-1:
 				return False
 	
-		if self.is_recursive:
-			return True
-		else:
-			return False
-		
+		#if here, path is not working directory so just check if recurse is true.
+		return self.is_recursive
+
 	def _parse_cursor(self,cursor):
 		"""	Parse Clang cursor 
 		"""
@@ -448,7 +452,9 @@ class Parser(object):
 			#Note: Initially, self.cursors are ALWAYS clang.cindex.CursorKind.LINKAGE_SPEC
 			#Todo: Write additional cursor handles or come up with dummies
 			if cursor.kind in self.cursor_handles:
-				fns = self.cursor_handles[cursor.kind].create_functions(cursor)
+				fns = self.cursor_handles[cursor.kind].flatten(cursor)
+				self.functions += fns
+				
 				for f in fns:
 					f.dump()
 
@@ -457,7 +463,7 @@ class Parser(object):
 			self._parse_cursor(c)	
 		
 #todo: move helpers to separate file
-class Helpers():
+class Helpers(object):
 
 	@staticmethod
 	def get_info(node, depth=0):
@@ -482,71 +488,14 @@ class Helpers():
 				 'args':node.get_argument_list(),
 				 'result_type':str(node.result_type.kind)
 			 }
-			 
-	@staticmethod			 
-	def indent(level):
-		""" Indentation string for pretty-printing
-		""" 
-		return '  '*level	
-	'''
+			 	
 	@staticmethod
-	def output_cursor(cursor, level):
-		""" Low level cursor output
-		"""
-		spelling = ''
-		displayname = ''
-
-		if cursor.spelling:
-			spelling = cursor.spelling
-		if cursor.displayname:
-			displayname = cursor.displayname
-		kind = cursor.kind;
-
-		print indent(level) + spelling, '<' + str(kind) + '>'
-		print indent(level+1) + '"'  + displayname + '"'
-	
-	@staticmethod
-	def output_cursor_and_children(cursor, level=0):
-		#output_cursor(cursor,level)
-		#LINKAGE_SPEC (http://clang.llvm.org/doxygen/classclang_1_1LinkageSpecDecl.html)
-		#Represents code of the type:  extern "C" void foo()
-		if cursor.kind == clang.cindex.CursorKind.LINKAGE_SPEC:
-			fns = ExternDecl.create_functions(cursor)
-			for f in fns:
-				f.dump()
+	def output_cursor_and_children(cursor):
+		Helpers.get_info(cursor)
 
 		# Recurse for children of this cursor
 		has_children = False;
 		for c in cursor.get_children():
 			if not has_children:
 				has_children = True
-			output_cursor_and_children(c, level+1)
-	'''
-'''	
-def main():
-	from clang.cindex import Index
-	from pprint import pprint
-
-	from optparse import OptionParser, OptionGroup
-
-	global opts
-
-	parser = OptionParser("usage: %prog {filename} [clang-args*]")
-	parser.disable_interspersed_args()
-	(opts, args) = parser.parse_args()
-
-	if len(args) == 0:
-		print 'invalid number arguments'
-
-	index = Index.create()
-	tu = index.parse(sys.argv[1], args=['-x', 'c++','-cc1'])
-	#tu = index.parse(None, args)
-	
-	if not tu:
-		print "unable to load input"
-
-	output_cursor_and_children(tu.cursor)
-
-if __name__ == '__main__':
-    main()
-'''
+			Helpers.output_cursor_and_children(c)
