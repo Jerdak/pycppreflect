@@ -10,7 +10,7 @@ from optparse import OptionParser, OptionGroup
 # assume pccppreflect python module is 1 level up and not in /python/lib
 sys.path.append("..")
 from pycppreflect.sbind import *
- 
+from pycppreflect.filters.unity import *
 
 
 # 1. Manually append current working directory to OS path
@@ -56,6 +56,9 @@ def main():
 	sparser.is_relative = True
 	sparser.parse(sys.argv[1])
 
+	filter = Unity()
+	filter.plugin = os.path.splitext(sys.argv[1])[0] #use filename as dummy dll name
+	filter.filter(sparser.functions)
 	
 	'''if len(args) == 0:
 		print 'invalid number arguments'
