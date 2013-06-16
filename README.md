@@ -34,10 +34,23 @@ glitch](http://www.seethroughskin.com/blog/?p=2172)
 `Cursor.get_argument_list` method in the original.  
 
 Todo
------
+----
 - [ ] Port all additional pycppreflect code from local repo
 - [ ] Add additional cursor handlers
-- [ ] Add example filters like UnityDllImport.py
-- [ ] Add code to limit the reach of the flattened output
+- [x] Add example filters like UnityDllImport.py
+- [x] Add code to limit the reach of the flattened output
 - [ ] Clean .py code a bit to remove redundant data
 - [ ] Replace TypeKind values with canonical CPP types
+
+FAQ
+---
+q.  why are properties stored in self.components_ instead of just normal variables?
+
+a.  Initially it was easier for me to dump property data  when it was stored in a dictionary instead
+of having to hardcode each property name.  I fully intend to scrap this framework.
+
+q.  why not just do this work manually?
+
+a.  I have a few libs w/ over 100 functions I need to wrap.  That's not something I'd care to do manually.
+
+contact: jerdak@seethroughskin.com
